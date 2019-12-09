@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -95,10 +94,10 @@ class BaseModel:
             df['总税'] = df['印花税'] + df['增值税'] + df['企业所得税'] + df['城建税'] + df['教育费']
             df['注册资本税收比'] = df['注册资本'] / df['总税']
             # 通过查询邮政编码的含义，中间两位代表市，可能提取出来作用更大一些
-            df['邮政编码'] = df['邮政编码'].str[2:4]
+            df['邮政编码'] = df['邮政编码'].str[:4]
             # 看到图中的行业代码影响力很大。所以查询以下四位数有什么代表含义。四位数包括 大类两位数，中类三位数（包括大类的两位数），小类四位数
             # 所以想把大类 或者种类单独提取出来，行业代码是float64位的数而不是字符串
-            df['行业代码'] = df['行业代码'].astype(str).str[:2]
+            # df['行业代码'] = df['行业代码'].astype(str).str[:2]
             # df['长期负债合计_差值'] = df['长期负债合计_年末数'] - df['长期负债合计_年末数']
             # df['长期借款_差值'] = df['长期借款_年末数'] - df['长期借款_年初数']
             # df['货币资金_差值'] = df['货币资金_年末数']- df['货币资金_年初数']
@@ -106,7 +105,22 @@ class BaseModel:
             # df['其他应收款_差值'] = df['其他应收款_年末数'] - df['其他应收款_年初数']
             # df['所有者权益合计_差值'] = df['所有者权益合计_年末数'] - df['所有者权益合计_年初数']
             # df['应收账款_差值'] = df['应收账款_年末数']- df['应收账款_年初数']
-            df['企业所得税与增值税之比'] = df['企业所得税']/df['增值税']
+            #df['企业所得税与增值税之比'] = df['企业所得税']/df['增值税']
+            df['资产结构_年初数'] = df['流动资产合计_年初数'] / df['非流动资产合计_年初数']
+            df['资产结构_年末数'] = df['流动资产合计_年末数'] / df['非流动资产合计_年末数']
+            df['资产结构_差值'] = df['资产结构_年末数'] - df['资产结构_年初数']
+
+            df['固定资产长期股权投资之比_年初数'] = df['固定资产合计_年初数']/ df['长期股权投资_年初数']
+            df['固定资产长期股权投资之比_年末数'] = df['固定资产合计_年末数']/ df['长期股权投资_年末数']
+            df['固定资产长期股权投资之比_差值'] = df['固定资产长期股权投资之比_年末数'] - df['固定资产长期股权投资之比_年初数']
+
+            df['存货其他流动资产之比_年初数'] = df['存货_年初数'] / df['其他流动资产_年初数']
+            df['存货其他流动资产之比_年末数'] = df['存货_年末数'] / df['其他流动资产_年末数']
+            df['存货其他流动资产之比_差值'] = df['存货其他流动资产之比_年末数'] - df['存货其他流动资产之比_年初数']
+
+            df['资金来源结构_年初数'] = df['实收资本（股本）_年初数'] / df['负债合计_年初数']
+            df['资金来源结构_年末数'] = df['实收资本（股本）_年末数'] / df['负债合计_年末数']
+            df['资金来源结构_差值'] = df['资金来源结构_年末数'] - df['资金来源结构_年初数']
 
             # df['负债_年初'] = df['长期负债合计_年初数'] + df['长期借款_年初数'] + df['长期应付款_年初数'] + df
             # ******************
@@ -117,12 +131,12 @@ class BaseModel:
         self.test = test.copy()
         # * ---------------------------------------------------------------------------
         self.features = [_ for _ in self.train.columns if
-                         _ not in ['ID', 'Label', '经营范围', '经营期限至', '核准日期', '注销时间', '经营期限自', '成立日期']]
+                         _ not in ['ID', 'Label', '经营范围', '经营期限至', '核准日期', '注销时间', '行业代码', '经营期限自', '成立日期']]
         # 解决新版本LGB输入数据集不支持中文特征的问题：临时将中文特征编码为整数
         map_columns = {self.features[i]: i for i in range(len(self.features))}
         self.train.rename(columns=map_columns, inplace=True)
         self.test.rename(columns=map_columns, inplace=True)
-        self.cat_feats = ['企业类型', '登记机关', '企业状态', '邮政编码', '行业代码', '行业门类', '企业类别', '管辖机关']
+        self.cat_feats = ['企业类型', '登记机关', '企业状态', '邮政编码', '行业门类', '企业类别', '管辖机关']
         self.features = [map_columns[i] for i in self.features]
         self.cat_feats = [map_columns[i] for i in self.cat_feats]
         self.map_columns = {i[1]: i[0] for i in map_columns.items()}
@@ -223,13 +237,13 @@ params = {
     'bagging_fraction': 0.85,
     'bagging_seed': int(np.random.rand() * 100),
     'boost': 'gbdt',
-    'feature_fraction': 0.85,     # 随机选择85%的特征
+    'feature_fraction': 0.85,
     'feature_fraction_seed': int(np.random.rand() * 100),
-    'learning_rate': 0.01,
-    'max_depth': 10,     # 貌似 8 改成10 提高了
+    'learning_rate': 0.05,
+    'max_depth': 10,
     'metric': 'auc',
-    'min_data_in_leaf': 15,    # 一个叶子上数据的最小数量. 可以用来处理过拟合. default 20
-    'num_leaves': 28,   # 64 应该没有32好
+    'min_data_in_leaf': 50,    # 一个叶子上数据的最小数量. 可以用来处理过拟合. default 20
+    'num_leaves': 256,
     'num_threads': 4,
     'objective': 'binary',
     "lambda_l1": 0.5,
